@@ -1,0 +1,103 @@
+mql5
+//+------------------------------------------------------------------+
+//|                                                    Buy Sell Signal Low TF MT4                        |
+//|                                                  forexroboteasy.com          |
+//|                                            Forex Robot Easy Team |
+//+------------------------------------------------------------------+
+
+#property indicator_chart_window
+#property indicator_buffers 3
+#property indicator_color1 Lime
+#property indicator_color2 Red
+#property indicator_color3 Yellow
+
+// input parameters
+input int smma13_period = 13;
+input int smma21_period = 21;
+input int smma35_period = 35;
+input int cci_period = 8;
+
+// buffers
+double BuyBuffer[];
+double SellBuffer[];
+double AlertBuffer[];
+
+//+------------------------------------------------------------------+
+//| Custom indicator initialization function                         |
+//+------------------------------------------------------------------+
+int OnInit()
+{
+   //--- indicator buffers mapping
+   SetIndexBuffer(0, BuyBuffer);
+   SetIndexBuffer(1, SellBuffer);
+   SetIndexBuffer(2, AlertBuffer);
+   
+   //--- indicator lines
+   SetIndexStyle(0, DRAW_ARROW);
+   SetIndexArrow(0, 233);
+   SetIndexStyle(1, DRAW_ARROW);
+   SetIndexArrow(1, 234);
+   SetIndexStyle(2, DRAW_ARROW);
+   SetIndexArrow(2, 232);
+   
+   //--- name for DataWindow and indicator subwindow label
+   IndicatorShortName('Buy Sell Signal Low TF MT4');
+   
+   return(INIT_SUCCEEDED);
+}
+
+//+------------------------------------------------------------------+
+//| Custom indicator iteration function                              |
+//+------------------------------------------------------------------+
+int OnCalculate(const int rates_total, const int prev_calculated,
+                const datetime &time[], const double &open[],
+                const double &high[], const double &low[],
+                const double &close[], const long &tick_volume[],
+                const long &volume[], const int &spread[])
+{
+   int i, limit;
+   
+   if (prev_calculated == 0)
+   {
+      limit = rates_total - smma35_period - 1;
+      
+      for (i = 0; i < limit; i++)
+      {
+         BuyBuffer[i] = 0;
+         SellBuffer[i] = 0;
+         AlertBuffer[i] = 0;
+      }
+   }
+   
+   limit = rates_total - prev_calculated;
+   
+   for (i = 0; i < limit; i++)
+   {
+      double smma13 = iMA(NULL, 0, smma13_period, 0, MODE_SMMA, PRICE_CLOSE, i);
+      double smma21 = iMA(NULL, 0, smma21_period, 0, MODE_SMMA, PRICE_CLOSE, i);
+      double smma35 = iMA(NULL, 0, smma35_period, 0, MODE_SMMA, PRICE_CLOSE, i);
+      
+      double cci = iCCI(NULL, 0, cci_period, PRICE_TYPICAL, i);
+      
+      if (cci > 0 && cci > smma13 && cci > smma21 && cci > smma35)
+      {
+         BuyBuffer[i] = low[i] - (high[i] - low[i]) * 0.01;
+         SellBuffer[i] = EMPTY_VALUE;
+         AlertBuffer[i] = high[i] + (high[i] - low[i]) * 0.01;
+      }
+      else if (cci < 0 && cci < smma13 && cci < smma21 && cci < smma35)
+      {
+         BuyBuffer[i] = EMPTY_VALUE;
+         SellBuffer[i] = high[i] + (high[i] - low[i]) * 0.01;
+         AlertBuffer[i] = low[i] - (high[i] - low[i]) * 0.01;
+      }
+      else
+      {
+         BuyBuffer[i] = EMPTY_VALUE;
+         SellBuffer[i] = EMPTY_VALUE;
+         AlertBuffer[i] = EMPTY_VALUE;
+      }
+   }
+   
+   return(rates_total);
+}
